@@ -310,7 +310,7 @@ class TestABTestManager:
 
     def test_generate_title_variants_with_mock_llm(self, manager):
         """Test title variant generation"""
-        with patch("src.optimization.ab_testing.OllamaClient") as mock_class:
+        with patch("src.llm.ollama.OllamaClient") as mock_class:
             mock_llm = MagicMock()
             mock_llm.is_available.return_value = True
             mock_llm.generate.return_value = "Variant 1\nVariant 2\nVariant 3"
@@ -322,7 +322,7 @@ class TestABTestManager:
 
     def test_generate_title_variants_llm_unavailable(self, manager):
         """Test title generation when LLM unavailable"""
-        with patch("src.optimization.ab_testing.OllamaClient") as mock_class:
+        with patch("src.llm.ollama.OllamaClient") as mock_class:
             mock_llm = MagicMock()
             mock_llm.is_available.return_value = False
             mock_class.return_value = mock_llm

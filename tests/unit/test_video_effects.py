@@ -1,14 +1,14 @@
 """Unit tests for video effects module"""
 import pytest
 import numpy as np
-from unittest.mock import MagicMock, patch
+from pathlib import Path
+from PIL import Image
 
 from src.video.effects import (
-    apply_ken_burns,
+    ken_burns_effect,
     create_text_clip,
     add_subtitles,
-    add_background_music,
-    crossfade_clips,
+    crossfade_frames,
     slide_transition,
     zoom_transition,
     apply_vignette,
@@ -17,52 +17,61 @@ from src.video.effects import (
     add_progress_bar,
     apply_shake_effect,
     create_countdown,
-    COLOR_GRADES,
 )
 
 
 class TestKenBurns:
     """Tests for Ken Burns effect"""
 
-    def test_ken_burns_returns_clip(self):
-        """Test that Ken Burns returns a valid clip"""
-        # Create mock image clip
-        mock_clip = MagicMock()
-        mock_clip.duration = 5
-        mock_clip.w = 1920
-        mock_clip.h = 1080
-        mock_clip.resize.return_value = mock_clip
-        mock_clip.set_position.return_value = mock_clip
+    def test_ken_burns_returns_frames(self, temp_dir):
+        """Test that Ken Burns returns valid frames"""
+        # Create a test image
+        img = Image.new("RGB", (1920, 1080), color=(100, 150, 200))
+        img_path = temp_dir / "test_image.png"
+        img.save(img_path)
 
-        result = apply_ken_burns(mock_clip, duration=5)
+        frames = ken_burns_effect(
+            img_path,
+            duration=1.0,
+            target_size=(1080, 1920),
+            fps=10,
+        )
 
-        assert result is not None
+        assert frames is not None
+        assert len(frames) == 10  # 1 second * 10 fps
+        assert isinstance(frames[0], np.ndarray)
 
-    def test_ken_burns_zoom_in(self):
-        """Test zoom in effect"""
-        mock_clip = MagicMock()
-        mock_clip.duration = 3
-        mock_clip.w = 1920
-        mock_clip.h = 1080
-        mock_clip.resize.return_value = mock_clip
-        mock_clip.set_position.return_value = mock_clip
+    def test_ken_burns_zoom_in(self, temp_dir):
+        """Test zoom in direction"""
+        img = Image.new("RGB", (1920, 1080), color=(100, 150, 200))
+        img_path = temp_dir / "test_image.png"
+        img.save(img_path)
 
-        result = apply_ken_burns(mock_clip, zoom_start=1.0, zoom_end=1.3, duration=3)
+        frames = ken_burns_effect(
+            img_path,
+            duration=0.5,
+            target_size=(1080, 1920),
+            direction="in",
+            fps=10,
+        )
 
-        assert result is not None
+        assert len(frames) == 5
 
-    def test_ken_burns_zoom_out(self):
-        """Test zoom out effect"""
-        mock_clip = MagicMock()
-        mock_clip.duration = 3
-        mock_clip.w = 1920
-        mock_clip.h = 1080
-        mock_clip.resize.return_value = mock_clip
-        mock_clip.set_position.return_value = mock_clip
+    def test_ken_burns_zoom_out(self, temp_dir):
+        """Test zoom out direction"""
+        img = Image.new("RGB", (1920, 1080), color=(100, 150, 200))
+        img_path = temp_dir / "test_image.png"
+        img.save(img_path)
 
-        result = apply_ken_burns(mock_clip, zoom_start=1.3, zoom_end=1.0, duration=3)
+        frames = ken_burns_effect(
+            img_path,
+            duration=0.5,
+            target_size=(1080, 1920),
+            direction="out",
+            fps=10,
+        )
 
-        assert result is not None
+        assert len(frames) == 5
 
 
 class TestTextClip:
@@ -70,188 +79,147 @@ class TestTextClip:
 
     def test_create_text_clip_basic(self):
         """Test basic text clip creation"""
-        with patch("src.video.effects.TextClip") as mock_text:
-            mock_instance = MagicMock()
-            mock_text.return_value = mock_instance
-            mock_instance.set_position.return_value = mock_instance
-            mock_instance.set_duration.return_value = mock_instance
+        result = create_text_clip(
+            "Test text",
+            size=(1920, 1080),
+        )
 
-            result = create_text_clip("Test text", duration=5)
-
-            assert result is not None
-            mock_text.assert_called_once()
+        assert result is not None
+        assert isinstance(result, np.ndarray)
+        assert result.shape == (1080, 1920, 4)  # RGBA
 
     def test_create_text_clip_with_options(self):
         """Test text clip with custom options"""
-        with patch("src.video.effects.TextClip") as mock_text:
-            mock_instance = MagicMock()
-            mock_text.return_value = mock_instance
-            mock_instance.set_position.return_value = mock_instance
-            mock_instance.set_duration.return_value = mock_instance
+        result = create_text_clip(
+            "Custom text",
+            size=(1920, 1080),
+            font_size=80,
+            color="red",
+            position="top",
+        )
 
+        assert result is not None
+        assert result.shape == (1080, 1920, 4)
+
+    def test_create_text_clip_positions(self):
+        """Test different text positions"""
+        for position in ["top", "center", "bottom"]:
             result = create_text_clip(
-                "Test text",
-                duration=5,
-                fontsize=80,
-                color="red",
-                position="top",
+                "Position test",
+                size=(1920, 1080),
+                position=position,
             )
-
             assert result is not None
 
 
 class TestSubtitles:
     """Tests for subtitle functionality"""
 
-    def test_add_subtitles_returns_composite(self):
-        """Test that subtitles return composite clip"""
-        mock_video = MagicMock()
-        mock_video.duration = 10
-        mock_video.w = 1920
-        mock_video.h = 1080
+    def test_add_subtitles_to_frames(self):
+        """Test adding subtitles to frames"""
+        # Create sample frames
+        frames = [np.ones((1080, 1920, 3), dtype=np.uint8) * 128 for _ in range(10)]
 
-        subtitles = [
-            {"text": "Hello", "start": 0, "end": 2},
-            {"text": "World", "start": 2, "end": 4},
-        ]
+        result = add_subtitles(frames, "Test subtitle")
 
-        with patch("src.video.effects.TextClip") as mock_text, \
-             patch("src.video.effects.CompositeVideoClip") as mock_composite:
+        assert result is not None
+        assert len(result) == 10
+        assert result[0].shape[:2] == (1080, 1920)
 
-            mock_text_instance = MagicMock()
-            mock_text.return_value = mock_text_instance
-            mock_text_instance.set_position.return_value = mock_text_instance
-            mock_text_instance.set_start.return_value = mock_text_instance
-            mock_text_instance.set_duration.return_value = mock_text_instance
+    def test_add_subtitles_empty_frames(self):
+        """Test with empty frames list"""
+        result = add_subtitles([], "Test")
 
-            mock_composite.return_value = MagicMock()
-
-            result = add_subtitles(mock_video, subtitles)
-
-            assert result is not None
-            mock_composite.assert_called_once()
-
-
-class TestBackgroundMusic:
-    """Tests for background music"""
-
-    def test_add_background_music(self, temp_dir):
-        """Test adding background music"""
-        mock_video = MagicMock()
-        mock_video.duration = 30
-        mock_video.audio = MagicMock()
-
-        with patch("src.video.effects.AudioFileClip") as mock_audio:
-            mock_audio_instance = MagicMock()
-            mock_audio.return_value = mock_audio_instance
-            mock_audio_instance.volumex.return_value = mock_audio_instance
-            mock_audio_instance.audio_loop.return_value = mock_audio_instance
-            mock_audio_instance.subclip.return_value = mock_audio_instance
-
-            with patch("src.video.effects.CompositeAudioClip") as mock_composite:
-                mock_composite.return_value = MagicMock()
-
-                result = add_background_music(
-                    mock_video,
-                    str(temp_dir / "music.mp3"),
-                    volume=0.3,
-                )
-
-                assert result is not None
+        assert result == []
 
 
 class TestTransitions:
     """Tests for video transitions"""
 
-    def test_crossfade_clips(self):
-        """Test crossfade between clips"""
-        mock_clip1 = MagicMock()
-        mock_clip1.duration = 5
-        mock_clip2 = MagicMock()
-        mock_clip2.duration = 5
+    def test_crossfade_frames(self):
+        """Test crossfade between frame sequences"""
+        frames1 = [np.ones((100, 100, 3), dtype=np.uint8) * 50 for _ in range(20)]
+        frames2 = [np.ones((100, 100, 3), dtype=np.uint8) * 200 for _ in range(20)]
 
-        with patch("src.video.effects.CompositeVideoClip") as mock_composite:
-            mock_composite.return_value = MagicMock()
+        result = crossfade_frames(frames1, frames2, transition_frames=10)
 
-            result = crossfade_clips(mock_clip1, mock_clip2, duration=1)
+        assert result is not None
+        assert len(result) > 0
 
-            assert result is not None
+    def test_crossfade_empty_frames(self):
+        """Test crossfade with empty inputs"""
+        result = crossfade_frames([], [])
+        assert result == []
 
     def test_slide_transition_directions(self):
         """Test slide transition in different directions"""
-        mock_clip1 = MagicMock()
-        mock_clip1.duration = 5
-        mock_clip1.w = 1920
-        mock_clip1.h = 1080
+        frames1 = [np.ones((100, 100, 3), dtype=np.uint8) * 50 for _ in range(20)]
+        frames2 = [np.ones((100, 100, 3), dtype=np.uint8) * 200 for _ in range(20)]
 
-        mock_clip2 = MagicMock()
-        mock_clip2.duration = 5
-        mock_clip2.w = 1920
-        mock_clip2.h = 1080
+        for direction in ["left", "right", "up", "down"]:
+            result = slide_transition(
+                frames1, frames2,
+                transition_frames=10,
+                direction=direction,
+            )
 
-        directions = ["left", "right", "up", "down"]
-
-        for direction in directions:
-            with patch("src.video.effects.CompositeVideoClip") as mock_composite:
-                mock_composite.return_value = MagicMock()
-
-                result = slide_transition(
-                    mock_clip1,
-                    mock_clip2,
-                    direction=direction,
-                    duration=1,
-                )
-
-                assert result is not None
+            assert result is not None
+            assert len(result) > 0
 
     def test_zoom_transition(self):
         """Test zoom transition"""
-        mock_clip1 = MagicMock()
-        mock_clip1.duration = 5
-        mock_clip2 = MagicMock()
-        mock_clip2.duration = 5
+        frames1 = [np.ones((100, 100, 3), dtype=np.uint8) * 50 for _ in range(20)]
+        frames2 = [np.ones((100, 100, 3), dtype=np.uint8) * 200 for _ in range(20)]
 
-        with patch("src.video.effects.CompositeVideoClip") as mock_composite:
-            mock_composite.return_value = MagicMock()
+        result = zoom_transition(frames1, frames2, transition_frames=10)
 
-            result = zoom_transition(mock_clip1, mock_clip2, zoom_type="in")
-
-            assert result is not None
+        assert result is not None
+        assert len(result) > 0
 
 
 class TestColorGrading:
     """Tests for color grading"""
 
-    def test_color_grades_exist(self):
-        """Test that all color grades are defined"""
-        expected_grades = ["cinematic", "vintage", "vibrant", "moody", "warm", "cool"]
-
-        for grade in expected_grades:
-            assert grade in COLOR_GRADES
-
     def test_apply_color_grade_presets(self):
         """Test applying color grade presets"""
-        mock_clip = MagicMock()
+        frames = [np.ones((100, 100, 3), dtype=np.uint8) * 128 for _ in range(5)]
 
-        for preset in COLOR_GRADES.keys():
-            with patch("src.video.effects.vfx") as mock_vfx:
-                mock_vfx.colorx.return_value = mock_clip
+        presets = ["cinematic", "vintage", "vibrant", "moody", "warm", "cool"]
 
-                result = apply_color_grade(mock_clip, preset=preset)
+        for preset in presets:
+            result = apply_color_grade(frames, preset=preset)
 
-                assert result is not None
+            assert result is not None
+            assert len(result) == 5
+
+    def test_apply_color_grade_invalid_preset(self):
+        """Test with invalid preset"""
+        frames = [np.ones((100, 100, 3), dtype=np.uint8) * 128]
+
+        result = apply_color_grade(frames, preset="nonexistent")
+
+        # Should return original frames
+        assert len(result) == 1
 
     def test_apply_vignette(self):
         """Test vignette effect"""
-        # Create a sample frame
-        frame = np.ones((1080, 1920, 3), dtype=np.uint8) * 255
+        frames = [np.ones((100, 100, 3), dtype=np.uint8) * 255 for _ in range(3)]
 
-        result = apply_vignette(frame, strength=0.5)
+        result = apply_vignette(frames, strength=0.5)
 
         assert result is not None
-        assert result.shape == frame.shape
+        assert len(result) == 3
+
         # Edges should be darker than center
-        assert np.mean(result[0, :, :]) < np.mean(result[540, :, :])
+        frame = result[0]
+        center_val = np.mean(frame[50, 50, :])
+        corner_val = np.mean(frame[0, 0, :])
+        assert corner_val < center_val
+
+    def test_apply_vignette_empty(self):
+        """Test vignette with empty frames"""
+        result = apply_vignette([])
+        assert result == []
 
 
 class TestAnimatedText:
@@ -259,59 +227,55 @@ class TestAnimatedText:
 
     def test_create_animated_text_fade(self):
         """Test fade animation"""
-        with patch("src.video.effects.TextClip") as mock_text:
-            mock_instance = MagicMock()
-            mock_text.return_value = mock_instance
-            mock_instance.set_position.return_value = mock_instance
-            mock_instance.set_duration.return_value = mock_instance
-            mock_instance.crossfadein.return_value = mock_instance
-            mock_instance.crossfadeout.return_value = mock_instance
+        result = create_animated_text(
+            "Test",
+            size=(640, 480),
+            duration=1.0,
+            fps=10,
+            animation="fade",
+        )
 
-            result = create_animated_text(
-                "Test",
-                duration=3,
-                animation="fade",
-            )
-
-            assert result is not None
+        assert result is not None
+        assert len(result) == 10
 
     def test_create_animated_text_typewriter(self):
         """Test typewriter animation"""
-        with patch("src.video.effects.TextClip") as mock_text, \
-             patch("src.video.effects.CompositeVideoClip") as mock_composite:
+        result = create_animated_text(
+            "Hello World",
+            size=(640, 480),
+            duration=1.0,
+            fps=10,
+            animation="typewriter",
+        )
 
-            mock_instance = MagicMock()
-            mock_text.return_value = mock_instance
-            mock_instance.set_position.return_value = mock_instance
-            mock_instance.set_duration.return_value = mock_instance
-            mock_instance.set_start.return_value = mock_instance
-
-            mock_composite.return_value = MagicMock()
-
-            result = create_animated_text(
-                "Test",
-                duration=3,
-                animation="typewriter",
-            )
-
-            assert result is not None
+        assert result is not None
+        assert len(result) == 10
 
     def test_create_animated_text_scale(self):
         """Test scale animation"""
-        with patch("src.video.effects.TextClip") as mock_text:
-            mock_instance = MagicMock()
-            mock_text.return_value = mock_instance
-            mock_instance.set_position.return_value = mock_instance
-            mock_instance.set_duration.return_value = mock_instance
-            mock_instance.resize.return_value = mock_instance
+        result = create_animated_text(
+            "Scale Test",
+            size=(640, 480),
+            duration=1.0,
+            fps=10,
+            animation="scale",
+        )
 
-            result = create_animated_text(
-                "Test",
-                duration=3,
-                animation="scale",
-            )
+        assert result is not None
+        assert len(result) == 10
 
-            assert result is not None
+    def test_create_animated_text_slide(self):
+        """Test slide animation"""
+        result = create_animated_text(
+            "Slide Test",
+            size=(640, 480),
+            duration=1.0,
+            fps=10,
+            animation="slide",
+        )
+
+        assert result is not None
+        assert len(result) == 10
 
 
 class TestProgressBar:
@@ -319,25 +283,35 @@ class TestProgressBar:
 
     def test_add_progress_bar(self):
         """Test adding progress bar"""
-        mock_video = MagicMock()
-        mock_video.duration = 30
-        mock_video.w = 1920
-        mock_video.h = 1080
+        frames = [np.zeros((100, 200, 3), dtype=np.uint8) for _ in range(10)]
 
-        with patch("src.video.effects.ColorClip") as mock_color, \
-             patch("src.video.effects.CompositeVideoClip") as mock_composite:
+        result = add_progress_bar(
+            frames,
+            color=(255, 0, 0),
+            height=5,
+            position="bottom",
+        )
 
-            mock_color.return_value = MagicMock()
-            mock_composite.return_value = MagicMock()
+        assert result is not None
+        assert len(result) == 10
 
-            result = add_progress_bar(
-                mock_video,
-                color=(255, 0, 0),
-                height=5,
-                position="bottom",
-            )
+        # Check last frame has full bar
+        last_frame = result[-1]
+        # Bottom row should have red pixels
+        assert last_frame[95, 100, 0] == 255  # Red channel
 
-            assert result is not None
+    def test_add_progress_bar_top(self):
+        """Test progress bar at top"""
+        frames = [np.zeros((100, 200, 3), dtype=np.uint8) for _ in range(5)]
+
+        result = add_progress_bar(frames, position="top")
+
+        assert len(result) == 5
+
+    def test_add_progress_bar_empty(self):
+        """Test with empty frames"""
+        result = add_progress_bar([])
+        assert result == []
 
 
 class TestShakeEffect:
@@ -345,27 +319,25 @@ class TestShakeEffect:
 
     def test_apply_shake_effect(self):
         """Test shake effect"""
-        # Create sample frame
-        frame = np.ones((1080, 1920, 3), dtype=np.uint8) * 128
+        frames = [np.ones((100, 100, 3), dtype=np.uint8) * 128 for _ in range(10)]
 
-        result = apply_shake_effect(frame, intensity=10, t=0.5)
+        result = apply_shake_effect(frames, intensity=5.0)
 
         assert result is not None
-        assert result.shape == frame.shape
+        assert len(result) == 10
 
-    def test_shake_intensity(self):
-        """Test that intensity affects shake amount"""
-        frame = np.ones((1080, 1920, 3), dtype=np.uint8) * 128
+    def test_apply_shake_effect_zero_intensity(self):
+        """Test with zero intensity"""
+        frames = [np.ones((100, 100, 3), dtype=np.uint8) * 128 for _ in range(5)]
 
-        # With no intensity, frame should be unchanged
-        result_zero = apply_shake_effect(frame.copy(), intensity=0, t=0.5)
+        result = apply_shake_effect(frames, intensity=0.0)
 
-        # With intensity, frame should be shifted
-        result_shake = apply_shake_effect(frame.copy(), intensity=20, t=0.5)
+        assert len(result) == 5
 
-        # Results should be different
-        # Note: Due to randomness, we just check shape is preserved
-        assert result_zero.shape == result_shake.shape
+    def test_apply_shake_effect_empty(self):
+        """Test with empty frames"""
+        result = apply_shake_effect([])
+        assert result == []
 
 
 class TestCountdown:
@@ -373,39 +345,34 @@ class TestCountdown:
 
     def test_create_countdown(self):
         """Test countdown creation"""
-        with patch("src.video.effects.TextClip") as mock_text, \
-             patch("src.video.effects.concatenate_videoclips") as mock_concat:
+        result = create_countdown(
+            duration=3.0,
+            size=(640, 480),
+            fps=10,
+        )
 
-            mock_instance = MagicMock()
-            mock_text.return_value = mock_instance
-            mock_instance.set_position.return_value = mock_instance
-            mock_instance.set_duration.return_value = mock_instance
+        assert result is not None
+        assert len(result) == 30  # 3 seconds * 10 fps
 
-            mock_concat.return_value = MagicMock()
+    def test_create_countdown_custom_colors(self):
+        """Test countdown with custom colors"""
+        result = create_countdown(
+            duration=2.0,
+            size=(640, 480),
+            fps=10,
+            color="red",
+            background_color=(0, 0, 255),
+        )
 
-            result = create_countdown(
-                start=3,
-                duration_per_number=1,
-            )
+        assert result is not None
+        assert len(result) == 20
 
-            assert result is not None
-            # Should create clips for 3, 2, 1
-            assert mock_text.call_count >= 3
+    def test_countdown_frame_dimensions(self):
+        """Test countdown frame dimensions"""
+        result = create_countdown(
+            duration=1.0,
+            size=(1920, 1080),
+            fps=5,
+        )
 
-    def test_create_countdown_custom_start(self):
-        """Test countdown with custom start"""
-        with patch("src.video.effects.TextClip") as mock_text, \
-             patch("src.video.effects.concatenate_videoclips") as mock_concat:
-
-            mock_instance = MagicMock()
-            mock_text.return_value = mock_instance
-            mock_instance.set_position.return_value = mock_instance
-            mock_instance.set_duration.return_value = mock_instance
-
-            mock_concat.return_value = MagicMock()
-
-            result = create_countdown(start=5)
-
-            assert result is not None
-            # Should create clips for 5, 4, 3, 2, 1
-            assert mock_text.call_count >= 5
+        assert result[0].shape == (1080, 1920, 3)

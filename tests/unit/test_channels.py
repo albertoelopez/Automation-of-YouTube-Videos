@@ -341,10 +341,11 @@ class TestChannelGenerateForChannel:
         """Test generation with mocked pipeline"""
         manager.create_channel("ch1", "Test Channel", "tech")
 
-        with patch("src.channels.manager.Pipeline") as mock_pipeline_class, \
-             patch("src.channels.manager.load_config") as mock_config:
+        with patch("src.pipeline.Pipeline") as mock_pipeline_class, \
+             patch("src.utils.config.load_config") as mock_config:
 
             mock_config.return_value = MagicMock()
+            mock_config.return_value.tts = MagicMock()
             mock_pipeline = MagicMock()
             mock_pipeline.generate.return_value = MagicMock(video_path="/path/to/video.mp4")
             mock_pipeline_class.return_value = mock_pipeline
