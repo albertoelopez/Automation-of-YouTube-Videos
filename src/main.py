@@ -183,15 +183,29 @@ def models():
 
 
 @app.command()
-def voices():
+def voices(
+    language: str = typer.Option(None, "--language", "-l", help="Filter by language"),
+):
     """List available TTS voices"""
     from .tts.piper import PiperTTS
+    from rich.table import Table
 
-    console.print("[bold]Available Piper Voices:[/bold]\n")
-    for voice_name in PiperTTS.VOICE_MODELS.keys():
-        console.print(f"  • {voice_name}")
+    voices_list = PiperTTS.list_voices()
 
-    console.print("\n[dim]More voices at: https://rhasspy.github.io/piper-samples/[/dim]")
+    if language:
+        voices_list = [v for v in voices_list if language.lower() in v["language"].lower()]
+
+    table = Table(title="Available Piper Voices")
+    table.add_column("Voice Name", style="cyan")
+    table.add_column("Language")
+    table.add_column("Gender")
+
+    for voice in voices_list:
+        table.add_row(voice["name"], voice["language"], voice["gender"])
+
+    console.print(table)
+    console.print(f"\n[dim]Total: {len(voices_list)} voices[/dim]")
+    console.print("[dim]More voices at: https://rhasspy.github.io/piper-samples/[/dim]")
 
 
 @app.command("generate-image")
@@ -268,6 +282,38 @@ def upload_cmd(
     else:
         console.print("[red]Upload failed[/red]")
         raise typer.Exit(1)
+
+
+@app.command("transcribe")
+def transcribe_cmd(
+    audio: Path = typer.Argument(..., help="Path to audio file"),
+    model: str = typer.Option("base", "--model", "-m", help="Whisper model: tiny, base, small, medium, large"),
+    language: str = typer.Option(None, "--language", "-l", help="Language code (e.g., en, es)"),
+    output: Path = typer.Option(None, "--output", "-o", help="Output SRT file path"),
+):
+    """Transcribe audio to subtitles using Whisper"""
+    try:
+        from .transcribe.whisper import WhisperTranscriber, generate_srt
+    except ImportError:
+        console.print("[red]Whisper not installed. Install with:[/red]")
+        console.print('  pip install -e ".[whisper]"')
+        raise typer.Exit(1)
+
+    transcriber = WhisperTranscriber(model=model)
+    console.print(f"[cyan]Transcribing {audio.name}...[/cyan]")
+
+    result = transcriber.transcribe(audio, language=language)
+
+    console.print(f"[green]Transcription complete![/green]")
+    console.print(f"  Language: {result.language}")
+    console.print(f"  Duration: {result.duration:.1f}s")
+    console.print(f"  Segments: {len(result.segments)}")
+
+    if output:
+        srt_path = generate_srt(result, output)
+        console.print(f"  SRT saved: {srt_path}")
+    else:
+        console.print(f"\n[bold]Text:[/bold]\n{result.text}")
 
 
 def main():

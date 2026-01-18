@@ -22,25 +22,168 @@ class AudioSegment:
 class PiperTTS:
     """Piper TTS client for local voice synthesis"""
 
-    # Voice model download URLs
+    # Voice model download URLs - organized by language
+    # Full list at: https://rhasspy.github.io/piper-samples/
     VOICE_MODELS = {
+        # English (US)
         "en_US-lessac-medium": {
             "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx",
             "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json",
+            "language": "English (US)", "gender": "male",
         },
         "en_US-amy-medium": {
             "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/medium/en_US-amy-medium.onnx",
             "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/medium/en_US-amy-medium.onnx.json",
+            "language": "English (US)", "gender": "female",
         },
+        "en_US-ryan-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/medium/en_US-ryan-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/medium/en_US-ryan-medium.onnx.json",
+            "language": "English (US)", "gender": "male",
+        },
+        "en_US-joe-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/joe/medium/en_US-joe-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/joe/medium/en_US-joe-medium.onnx.json",
+            "language": "English (US)", "gender": "male",
+        },
+        # English (UK)
         "en_GB-alan-medium": {
             "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alan/medium/en_GB-alan-medium.onnx",
             "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alan/medium/en_GB-alan-medium.onnx.json",
+            "language": "English (UK)", "gender": "male",
         },
+        "en_GB-jenny_dioco-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/jenny_dioco/medium/en_GB-jenny_dioco-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/jenny_dioco/medium/en_GB-jenny_dioco-medium.onnx.json",
+            "language": "English (UK)", "gender": "female",
+        },
+        # Spanish
         "es_ES-davefx-medium": {
             "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx",
             "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx.json",
+            "language": "Spanish (Spain)", "gender": "male",
+        },
+        "es_MX-ald-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_MX/ald/medium/es_MX-ald-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_MX/ald/medium/es_MX-ald-medium.onnx.json",
+            "language": "Spanish (Mexico)", "gender": "male",
+        },
+        # French
+        "fr_FR-upmc-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/upmc/medium/fr_FR-upmc-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/upmc/medium/fr_FR-upmc-medium.onnx.json",
+            "language": "French", "gender": "male",
+        },
+        "fr_FR-siwis-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx.json",
+            "language": "French", "gender": "female",
+        },
+        # German
+        "de_DE-thorsten-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx.json",
+            "language": "German", "gender": "male",
+        },
+        "de_DE-eva_k-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/eva_k/medium/de_DE-eva_k-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/eva_k/medium/de_DE-eva_k-medium.onnx.json",
+            "language": "German", "gender": "female",
+        },
+        # Italian
+        "it_IT-riccardo-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/it/it_IT/riccardo/medium/it_IT-riccardo-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/it/it_IT/riccardo/medium/it_IT-riccardo-medium.onnx.json",
+            "language": "Italian", "gender": "male",
+        },
+        # Portuguese
+        "pt_BR-faber-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx.json",
+            "language": "Portuguese (Brazil)", "gender": "male",
+        },
+        # Polish
+        "pl_PL-darkman-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/pl/pl_PL/darkman/medium/pl_PL-darkman-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/pl/pl_PL/darkman/medium/pl_PL-darkman-medium.onnx.json",
+            "language": "Polish", "gender": "male",
+        },
+        # Russian
+        "ru_RU-irina-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/ru/ru_RU/irina/medium/ru_RU-irina-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/ru/ru_RU/irina/medium/ru_RU-irina-medium.onnx.json",
+            "language": "Russian", "gender": "female",
+        },
+        # Chinese
+        "zh_CN-huayan-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/huayan/medium/zh_CN-huayan-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/huayan/medium/zh_CN-huayan-medium.onnx.json",
+            "language": "Chinese (Mandarin)", "gender": "female",
+        },
+        # Japanese
+        "ja_JP-kokoro-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/ja/ja_JP/kokoro/medium/ja_JP-kokoro-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/ja/ja_JP/kokoro/medium/ja_JP-kokoro-medium.onnx.json",
+            "language": "Japanese", "gender": "female",
+        },
+        # Korean
+        "ko_KR-kagayaki-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/ko/ko_KR/kagayaki/medium/ko_KR-kagayaki-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/ko/ko_KR/kagayaki/medium/ko_KR-kagayaki-medium.onnx.json",
+            "language": "Korean", "gender": "female",
+        },
+        # Dutch
+        "nl_NL-mls-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/nl/nl_NL/mls/medium/nl_NL-mls-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/nl/nl_NL/mls/medium/nl_NL-mls-medium.onnx.json",
+            "language": "Dutch", "gender": "mixed",
+        },
+        # Swedish
+        "sv_SE-nst-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/sv/sv_SE/nst/medium/sv_SE-nst-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/sv/sv_SE/nst/medium/sv_SE-nst-medium.onnx.json",
+            "language": "Swedish", "gender": "female",
+        },
+        # Norwegian
+        "no_NO-talesyntese-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/no/no_NO/talesyntese/medium/no_NO-talesyntese-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/no/no_NO/talesyntese/medium/no_NO-talesyntese-medium.onnx.json",
+            "language": "Norwegian", "gender": "male",
+        },
+        # Arabic
+        "ar_JO-kareem-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/ar/ar_JO/kareem/medium/ar_JO-kareem-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/ar/ar_JO/kareem/medium/ar_JO-kareem-medium.onnx.json",
+            "language": "Arabic", "gender": "male",
+        },
+        # Hindi
+        "hi_IN-swara-medium": {
+            "model": "https://huggingface.co/rhasspy/piper-voices/resolve/main/hi/hi_IN/swara/medium/hi_IN-swara-medium.onnx",
+            "config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/hi/hi_IN/swara/medium/hi_IN-swara-medium.onnx.json",
+            "language": "Hindi", "gender": "female",
         },
     }
+
+    @classmethod
+    def list_voices(cls) -> list[dict]:
+        """List all available voices with metadata"""
+        voices = []
+        for name, info in cls.VOICE_MODELS.items():
+            voices.append({
+                "name": name,
+                "language": info.get("language", "Unknown"),
+                "gender": info.get("gender", "Unknown"),
+            })
+        return voices
+
+    @classmethod
+    def get_voices_by_language(cls, language: str) -> list[str]:
+        """Get voice names for a specific language"""
+        language = language.lower()
+        return [
+            name for name, info in cls.VOICE_MODELS.items()
+            if language in info.get("language", "").lower()
+        ]
 
     def __init__(
         self,

@@ -41,9 +41,19 @@ diffusers = [
     "accelerate>=0.25.0",
 ]
 
+# Whisper transcription for accurate subtitle timing
+whisper = [
+    "faster-whisper>=0.10.0",
+]
+
+# Alternative: OpenAI's whisper (heavier but more compatible)
+whisper-openai = [
+    "openai-whisper>=20231117",
+]
+
 # All optional features
 all = [
-    "local-youtube-automation[youtube,diffusers]",
+    "local-youtube-automation[youtube,diffusers,whisper]",
 ]
 
 [project.scripts]
