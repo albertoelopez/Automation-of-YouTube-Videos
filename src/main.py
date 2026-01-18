@@ -427,6 +427,413 @@ def tiktok_login_cmd():
     uploader.login_manual()
 
 
+@app.command("trending")
+def trending_cmd(
+    sources: str = typer.Option("google,reddit,hackernews", "--sources", "-s", help="Comma-separated sources"),
+    niche: str = typer.Option(None, "--niche", "-n", help="Search specific niche (tech, gaming, finance, etc.)"),
+    limit: int = typer.Option(20, "--limit", "-l", help="Number of results"),
+    save: bool = typer.Option(False, "--save", help="Save results to cache"),
+):
+    """Get trending topics from various sources"""
+    from .research.trending import TrendingTopics
+
+    trending = TrendingTopics()
+
+    if niche:
+        console.print(f"[cyan]Searching trending in niche: {niche}[/cyan]")
+        topics = trending.search_niche(niche)
+    else:
+        source_list = [s.strip() for s in sources.split(",")]
+        console.print(f"[cyan]Fetching from: {', '.join(source_list)}[/cyan]")
+        topics = trending.get_all_trending(sources=source_list)
+
+    if topics:
+        trending.print_trending(topics, limit=limit)
+        if save:
+            cache_file = trending.save_cache(topics)
+            console.print(f"\n[dim]Saved to: {cache_file}[/dim]")
+    else:
+        console.print("[yellow]No trending topics found[/yellow]")
+
+
+@app.command("ideas")
+def ideas_cmd(
+    topic: str = typer.Argument(..., help="Topic or niche for idea generation"),
+    style: str = typer.Option("educational", "--style", "-s", help="Content style"),
+    duration: int = typer.Option(30, "--duration", "-d", help="Target duration in seconds"),
+):
+    """Generate a content idea using AI"""
+    from .research.ideas import IdeaGenerator
+
+    generator = IdeaGenerator()
+    console.print(f"[cyan]Generating idea for: {topic}[/cyan]\n")
+
+    idea = generator.generate_idea(topic, style=style, duration=duration)
+
+    if idea:
+        generator.print_idea(idea)
+    else:
+        console.print("[red]Failed to generate idea. Make sure Ollama is running.[/red]")
+        raise typer.Exit(1)
+
+
+@app.command("ideas-batch")
+def ideas_batch_cmd(
+    topic: str = typer.Argument(..., help="Topic for idea generation"),
+    count: int = typer.Option(5, "--count", "-c", help="Number of ideas to generate"),
+    style: str = typer.Option("educational", "--style", "-s", help="Content style"),
+):
+    """Generate multiple content ideas"""
+    from .research.ideas import IdeaGenerator
+
+    generator = IdeaGenerator()
+    console.print(f"[cyan]Generating {count} ideas for: {topic}[/cyan]\n")
+
+    ideas = generator.generate_ideas_batch(topic, count=count, style=style)
+
+    if ideas:
+        generator.print_ideas(ideas)
+        console.print(f"\n[green]Generated {len(ideas)} ideas[/green]")
+    else:
+        console.print("[red]Failed to generate ideas[/red]")
+        raise typer.Exit(1)
+
+
+@app.command("ideas-series")
+def ideas_series_cmd(
+    topic: str = typer.Argument(..., help="Series topic"),
+    episodes: int = typer.Option(5, "--episodes", "-e", help="Number of episodes"),
+    style: str = typer.Option("educational", "--style", "-s", help="Content style"),
+):
+    """Generate a video series concept"""
+    from .research.ideas import IdeaGenerator
+
+    generator = IdeaGenerator()
+    console.print(f"[cyan]Generating {episodes}-part series for: {topic}[/cyan]\n")
+
+    ideas = generator.generate_series(topic, episodes=episodes, style=style)
+
+    if ideas:
+        generator.print_ideas(ideas)
+        console.print(f"\n[green]Series generated with {len(ideas)} episodes[/green]")
+    else:
+        console.print("[red]Failed to generate series[/red]")
+        raise typer.Exit(1)
+
+
+@app.command("ideas-from-trending")
+def ideas_from_trending_cmd(
+    count: int = typer.Option(5, "--count", "-c", help="Number of ideas"),
+    niche: str = typer.Option(None, "--niche", "-n", help="Specific niche"),
+    style: str = typer.Option("educational", "--style", "-s", help="Content style"),
+):
+    """Generate ideas based on current trending topics"""
+    from .research.trending import TrendingTopics
+    from .research.ideas import IdeaGenerator
+
+    trending = TrendingTopics()
+    generator = IdeaGenerator()
+
+    console.print("[cyan]Fetching trending topics...[/cyan]")
+
+    if niche:
+        topics = trending.search_niche(niche)
+    else:
+        topics = trending.get_all_trending()
+
+    if not topics:
+        console.print("[yellow]No trending topics found[/yellow]")
+        raise typer.Exit(1)
+
+    console.print(f"[cyan]Generating ideas from {len(topics[:count])} trending topics...[/cyan]\n")
+
+    ideas = generator.generate_from_trending(topics[:count], style=style)
+
+    if ideas:
+        generator.print_ideas(ideas)
+        console.print(f"\n[green]Generated {len(ideas)} ideas from trending[/green]")
+    else:
+        console.print("[red]Failed to generate ideas[/red]")
+        raise typer.Exit(1)
+
+
+# ============== Thumbnail Commands ==============
+
+@app.command("thumbnail")
+def thumbnail_cmd(
+    text: str = typer.Argument(..., help="Text for the thumbnail"),
+    style: str = typer.Option("bold", "--style", "-s", help="Thumbnail style"),
+    background: Path = typer.Option(None, "--background", "-b", help="Background image"),
+    output: str = typer.Option(None, "--output", "-o", help="Output filename"),
+):
+    """Generate a thumbnail image"""
+    from .images.thumbnail import ThumbnailGenerator
+
+    gen = ThumbnailGenerator()
+    console.print(f"[cyan]Generating thumbnail with style: {style}[/cyan]")
+
+    result = gen.generate(
+        text=text,
+        style=style,
+        background_image=background,
+        output_name=output,
+    )
+
+    if result:
+        console.print(f"[green]Thumbnail saved: {result}[/green]")
+    else:
+        console.print("[red]Failed to generate thumbnail[/red]")
+        raise typer.Exit(1)
+
+
+@app.command("thumbnail-variants")
+def thumbnail_variants_cmd(
+    text: str = typer.Argument(..., help="Text for the thumbnails"),
+    styles: str = typer.Option("bold,minimal,viral", "--styles", "-s", help="Comma-separated styles"),
+    background: Path = typer.Option(None, "--background", "-b", help="Background image"),
+):
+    """Generate multiple thumbnail variants for A/B testing"""
+    from .images.thumbnail import ThumbnailGenerator
+
+    gen = ThumbnailGenerator()
+    style_list = [s.strip() for s in styles.split(",")]
+
+    console.print(f"[cyan]Generating {len(style_list)} thumbnail variants...[/cyan]")
+
+    results = gen.generate_variants(
+        text=text,
+        styles=style_list,
+        background_image=background,
+    )
+
+    if results:
+        console.print(f"\n[green]Generated {len(results)} variants:[/green]")
+        for path in results:
+            console.print(f"  • {path}")
+    else:
+        console.print("[red]Failed to generate thumbnails[/red]")
+        raise typer.Exit(1)
+
+
+@app.command("thumbnail-styles")
+def thumbnail_styles_cmd():
+    """List available thumbnail styles"""
+    from .images.thumbnail import ThumbnailGenerator
+    ThumbnailGenerator().print_styles()
+
+
+# ============== A/B Testing Commands ==============
+
+@app.command("ab-create")
+def ab_create_cmd(
+    video_id: str = typer.Argument(..., help="Video ID to test"),
+    test_type: str = typer.Option("title", "--type", "-t", help="Test type: title, thumbnail, description"),
+    variant_a: str = typer.Option(..., "--a", help="Variant A value"),
+    variant_b: str = typer.Option(..., "--b", help="Variant B value"),
+    min_impressions: int = typer.Option(1000, "--min", help="Minimum impressions before declaring winner"),
+):
+    """Create a new A/B test"""
+    from .optimization.ab_testing import ABTestManager
+
+    manager = ABTestManager()
+    test = manager.create_test(
+        video_id=video_id,
+        test_type=test_type,
+        variant_a_value=variant_a,
+        variant_b_value=variant_b,
+        min_impressions=min_impressions,
+    )
+
+    console.print(f"[green]Created A/B test: {test.id}[/green]")
+    manager.print_test(test)
+
+
+@app.command("ab-list")
+def ab_list_cmd(
+    status: str = typer.Option(None, "--status", "-s", help="Filter by status"),
+):
+    """List all A/B tests"""
+    from .optimization.ab_testing import ABTestManager
+    manager = ABTestManager()
+    manager.print_all_tests()
+
+
+@app.command("ab-status")
+def ab_status_cmd(
+    test_id: str = typer.Argument(..., help="Test ID"),
+):
+    """Show A/B test status and results"""
+    from .optimization.ab_testing import ABTestManager
+
+    manager = ABTestManager()
+    test = manager.get_test(test_id)
+
+    if test:
+        manager.print_test(test)
+    else:
+        console.print(f"[red]Test {test_id} not found[/red]")
+        raise typer.Exit(1)
+
+
+@app.command("ab-end")
+def ab_end_cmd(
+    test_id: str = typer.Argument(..., help="Test ID to end"),
+    winner: str = typer.Option(None, "--winner", "-w", help="Force winner (a or b)"),
+):
+    """End an A/B test"""
+    from .optimization.ab_testing import ABTestManager
+
+    manager = ABTestManager()
+    winner_name = f"Variant {winner.upper()}" if winner else None
+    manager.end_test(test_id, winner=winner_name)
+
+    console.print(f"[green]Test {test_id} ended[/green]")
+
+
+@app.command("ab-generate-titles")
+def ab_generate_titles_cmd(
+    title: str = typer.Argument(..., help="Original title"),
+    count: int = typer.Option(3, "--count", "-c", help="Number of variants"),
+):
+    """Generate title variants for A/B testing"""
+    from .optimization.ab_testing import ABTestManager
+
+    manager = ABTestManager()
+    variants = manager.generate_title_variants(title, count=count)
+
+    console.print("[bold]Title Variants:[/bold]\n")
+    console.print(f"  Original: {title}")
+    for i, variant in enumerate(variants, 1):
+        console.print(f"  Variant {i}: {variant}")
+
+
+# ============== Channel Management Commands ==============
+
+@app.command("channels")
+def channels_cmd():
+    """List all managed channels"""
+    from .channels.manager import ChannelManager
+    manager = ChannelManager()
+    manager.print_all_channels()
+
+
+@app.command("channel-create")
+def channel_create_cmd(
+    channel_id: str = typer.Argument(..., help="Unique channel ID"),
+    name: str = typer.Option(..., "--name", "-n", help="Channel name"),
+    niche: str = typer.Option(..., "--niche", help="Channel niche"),
+    language: str = typer.Option("en", "--language", "-l", help="Language code"),
+    voice: str = typer.Option("en_US-ryan-medium", "--voice", "-v", help="Piper TTS voice"),
+    style: str = typer.Option("educational", "--style", "-s", help="Default content style"),
+):
+    """Create a new channel configuration"""
+    from .channels.manager import ChannelManager
+
+    manager = ChannelManager()
+    channel = manager.create_channel(
+        channel_id=channel_id,
+        name=name,
+        niche=niche,
+        language=language,
+        voice=voice,
+        default_style=style,
+    )
+
+    console.print(f"[green]Created channel: {channel.id}[/green]")
+    manager.print_channel(channel)
+
+
+@app.command("channel-info")
+def channel_info_cmd(
+    channel_id: str = typer.Argument(..., help="Channel ID"),
+):
+    """Show channel details"""
+    from .channels.manager import ChannelManager
+
+    manager = ChannelManager()
+    channel = manager.get_channel(channel_id)
+
+    if channel:
+        manager.print_channel(channel)
+    else:
+        console.print(f"[red]Channel {channel_id} not found[/red]")
+        raise typer.Exit(1)
+
+
+@app.command("channel-generate")
+def channel_generate_cmd(
+    channel_id: str = typer.Argument(..., help="Channel ID"),
+    topic: str = typer.Argument(..., help="Video topic"),
+    upload: bool = typer.Option(False, "--upload", "-u", help="Upload after generation"),
+):
+    """Generate a video for a specific channel"""
+    from .channels.manager import ChannelManager
+
+    manager = ChannelManager()
+    result = manager.generate_for_channel(channel_id, topic, upload=upload)
+
+    if result:
+        console.print(f"\n[green]Video generated: {result.video_path}[/green]")
+    else:
+        console.print("[red]Generation failed[/red]")
+        raise typer.Exit(1)
+
+
+@app.command("channel-update")
+def channel_update_cmd(
+    channel_id: str = typer.Argument(..., help="Channel ID"),
+    voice: str = typer.Option(None, "--voice", "-v", help="Update voice"),
+    style: str = typer.Option(None, "--style", "-s", help="Update style"),
+    auto_upload: bool = typer.Option(None, "--auto-upload", help="Enable/disable auto upload"),
+    active: bool = typer.Option(None, "--active", help="Enable/disable channel"),
+):
+    """Update channel configuration"""
+    from .channels.manager import ChannelManager
+
+    manager = ChannelManager()
+    updates = {}
+
+    if voice is not None:
+        updates["voice"] = voice
+    if style is not None:
+        updates["default_style"] = style
+    if auto_upload is not None:
+        updates["auto_upload"] = auto_upload
+
+    if updates:
+        manager.update_channel(channel_id, **updates)
+
+    if active is not None:
+        manager.set_active(channel_id, active)
+
+    console.print(f"[green]Channel {channel_id} updated[/green]")
+
+
+@app.command("channel-delete")
+def channel_delete_cmd(
+    channel_id: str = typer.Argument(..., help="Channel ID to delete"),
+    confirm: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation"),
+):
+    """Delete a channel configuration"""
+    from .channels.manager import ChannelManager
+
+    if not confirm:
+        console.print(f"[yellow]Are you sure you want to delete channel '{channel_id}'?[/yellow]")
+        console.print("Use --yes to confirm")
+        raise typer.Exit(0)
+
+    manager = ChannelManager()
+    manager.delete_channel(channel_id)
+    console.print(f"[green]Channel {channel_id} deleted[/green]")
+
+
+@app.command("channel-samples")
+def channel_samples_cmd():
+    """Create sample channel configurations"""
+    from .channels.manager import create_sample_channels
+    create_sample_channels()
+
+
 def main():
     """Main entry point"""
     app()
