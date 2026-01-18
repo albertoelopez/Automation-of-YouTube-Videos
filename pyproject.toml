@@ -1,0 +1,44 @@
+[project]
+name = "local-youtube-automation"
+version = "0.1.0"
+description = "Fully local YouTube automation - no API keys required"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Alberto" }]
+
+dependencies = [
+    "moviepy>=1.0.3",
+    "Pillow>=10.0.0",
+    "numpy>=1.24.0",
+    "requests>=2.31.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "rich>=13.0.0",
+    "typer>=0.9.0",
+    "httpx>=0.25.0",
+    "pysrt>=1.1.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+ytauto = "src.main:app"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.black]
+line-length = 100
+
+[tool.ruff]
+line-length = 100

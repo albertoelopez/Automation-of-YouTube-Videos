@@ -1,0 +1,62 @@
+# Local YouTube Automation Configuration
+# No API keys required - everything runs locally
+
+[general]
+output_dir = "output"
+temp_dir = "temp"
+log_level = "INFO"
+
+[video]
+# Output format
+width = 1080
+height = 1920  # 9:16 for Shorts
+fps = 30
+format = "mp4"
+codec = "libx264"
+bitrate = "8M"
+
+# Timing
+min_clip_duration = 3.0
+max_clip_duration = 6.0
+transition_duration = 0.5
+
+# Effects
+enable_ken_burns = true
+ken_burns_zoom = 1.2
+
+[audio]
+# Voice settings
+sample_rate = 22050
+voice_speed = 1.0
+silence_padding = 0.3  # seconds between sentences
+
+[llm]
+# Ollama settings
+model = "llama3.1:8b"  # or "mistral", "phi3", "gemma2"
+base_url = "http://localhost:11434"
+temperature = 0.7
+max_tokens = 1000
+
+[tts]
+# Piper TTS settings
+model = "en_US-lessac-medium"  # Default English voice
+speaker_id = 0
+length_scale = 1.0  # Speed: <1 = faster, >1 = slower
+noise_scale = 0.667
+noise_w = 0.8
+
+[subtitles]
+enabled = true
+font = "Arial"
+font_size = 60
+color = "white"
+stroke_color = "black"
+stroke_width = 3
+position = "bottom"  # top, center, bottom
+
+[media]
+# Local media library paths
+footage_dir = "assets/footage"
+music_dir = "assets/music"
+images_dir = "assets/images"
+fonts_dir = "assets/fonts"
