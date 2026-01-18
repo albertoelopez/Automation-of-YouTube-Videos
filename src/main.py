@@ -316,6 +316,117 @@ def transcribe_cmd(
         console.print(f"\n[bold]Text:[/bold]\n{result.text}")
 
 
+@app.command("templates")
+def templates_cmd(
+    category: str = typer.Option(None, "--category", "-c", help="Filter by category"),
+):
+    """List available video templates"""
+    from .templates.manager import TemplateManager
+
+    manager = TemplateManager()
+
+    if category:
+        templates = manager.list_by_category(category)
+        if not templates:
+            console.print(f"[yellow]No templates found in category: {category}[/yellow]")
+            return
+    else:
+        manager.print_list()
+
+
+@app.command("schedule")
+def schedule_cmd(
+    topic: str = typer.Argument(..., help="Video topic"),
+    time: str = typer.Option(..., "--time", "-t", help="Scheduled time (ISO format or 'now+1h')"),
+    template: str = typer.Option(None, "--template", help="Template to use"),
+    upload_youtube: bool = typer.Option(False, "--youtube", "-y", help="Upload to YouTube"),
+    upload_tiktok: bool = typer.Option(False, "--tiktok", "-k", help="Upload to TikTok"),
+    privacy: str = typer.Option("private", "--privacy", "-p", help="Privacy setting"),
+):
+    """Schedule a video for later generation"""
+    from .scheduler.scheduler import Scheduler
+    from datetime import datetime, timedelta
+
+    scheduler = Scheduler()
+
+    # Parse time
+    if time.startswith("now+"):
+        # Parse relative time like "now+1h" or "now+30m"
+        delta_str = time[4:]
+        if delta_str.endswith("h"):
+            delta = timedelta(hours=int(delta_str[:-1]))
+        elif delta_str.endswith("m"):
+            delta = timedelta(minutes=int(delta_str[:-1]))
+        elif delta_str.endswith("d"):
+            delta = timedelta(days=int(delta_str[:-1]))
+        else:
+            delta = timedelta(minutes=int(delta_str))
+        scheduled_time = datetime.now() + delta
+    else:
+        scheduled_time = datetime.fromisoformat(time)
+
+    job = scheduler.add_job(
+        topic=topic,
+        scheduled_time=scheduled_time,
+        template=template,
+        upload_youtube=upload_youtube,
+        upload_tiktok=upload_tiktok,
+        privacy=privacy,
+    )
+
+    console.print(f"[green]Scheduled job {job.id} for {scheduled_time}[/green]")
+
+
+@app.command("schedule-list")
+def schedule_list_cmd():
+    """List scheduled jobs"""
+    from .scheduler.scheduler import Scheduler
+    scheduler = Scheduler()
+    scheduler.print_status()
+
+
+@app.command("schedule-run")
+def schedule_run_cmd(
+    foreground: bool = typer.Option(True, "--foreground", "-f", help="Run in foreground"),
+):
+    """Run the scheduler"""
+    from .scheduler.scheduler import run_scheduler
+    run_scheduler(foreground=foreground)
+
+
+@app.command("analytics")
+def analytics_cmd(
+    days: int = typer.Option(30, "--days", "-d", help="Number of days to analyze"),
+    recent: bool = typer.Option(False, "--recent", "-r", help="Show recent logs"),
+    performance: bool = typer.Option(False, "--performance", "-p", help="Show video performance"),
+):
+    """View generation analytics"""
+    from .analytics.tracker import AnalyticsTracker
+
+    tracker = AnalyticsTracker()
+
+    if recent:
+        tracker.print_recent_logs()
+    elif performance:
+        tracker.print_video_performance()
+    else:
+        tracker.print_summary(days=days)
+
+
+@app.command("tiktok-login")
+def tiktok_login_cmd():
+    """Login to TikTok for uploads"""
+    try:
+        from .upload.tiktok import TikTokUploader
+    except ImportError:
+        console.print("[red]Playwright not installed. Install with:[/red]")
+        console.print("  pip install playwright && playwright install chromium")
+        raise typer.Exit(1)
+
+    uploader = TikTokUploader(headless=False)
+    uploader.login_manual()
+
+
 def main():
     """Main entry point"""
     app()
