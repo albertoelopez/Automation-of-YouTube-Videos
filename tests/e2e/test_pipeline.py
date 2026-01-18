@@ -135,7 +135,6 @@ class TestCLIE2E:
         assert "Voice Name" in result.output or "voices" in result.output.lower()
 
     @pytest.mark.e2e
-    @pytest.mark.skip(reason="Templates command has a bug to fix")
     def test_cli_templates_command(self):
         """Test CLI templates command"""
         from typer.testing import CliRunner
@@ -144,8 +143,8 @@ class TestCLIE2E:
         runner = CliRunner()
         result = runner.invoke(app, ["templates"])
 
-        # May fail if templates module has issues, but check it runs
-        assert result.exit_code == 0 or "Template" in result.output or "error" in result.output.lower()
+        assert result.exit_code == 0
+        assert "facts" in result.output.lower() or "Template" in result.output
 
     @pytest.mark.e2e
     def test_cli_thumbnail_styles_command(self):
