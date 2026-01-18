@@ -32,7 +32,7 @@ silence_padding = 0.3  # seconds between sentences
 
 [llm]
 # Ollama settings
-model = "llama3.1:8b"  # or "mistral", "phi3", "gemma2"
+model = "qwen3:4b"  # or "llama3.1:8b", "mistral", "phi3", "gemma2"
 base_url = "http://localhost:11434"
 temperature = 0.7
 max_tokens = 1000
