@@ -27,6 +27,25 @@ dev = [
     "ruff>=0.1.0",
 ]
 
+# YouTube upload support (requires OAuth setup)
+youtube = [
+    "google-auth-oauthlib>=1.0.0",
+    "google-api-python-client>=2.100.0",
+]
+
+# Local image generation with Stable Diffusion (requires NVIDIA GPU)
+diffusers = [
+    "torch>=2.0.0",
+    "diffusers>=0.25.0",
+    "transformers>=4.35.0",
+    "accelerate>=0.25.0",
+]
+
+# All optional features
+all = [
+    "local-youtube-automation[youtube,diffusers]",
+]
+
 [project.scripts]
 ytauto = "src.main:app"
 
